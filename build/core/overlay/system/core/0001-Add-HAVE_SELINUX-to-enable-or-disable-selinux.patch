@@ -1,0 +1,799 @@
+From 630bc437ed55fda6d7faf419f59c0f5fe3c5a821 Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Fri, 14 Sep 2018 17:02:20 +0800
+Subject: [PATCH 1/2] Add HAVE_SELINUX to enable or disable selinux
+
+---
+ debuggerd/tombstone.c   |  4 ++++
+ init/builtins.c         |  6 ++++++
+ init/devices.c          | 14 ++++++++++++++
+ init/init.c             | 18 ++++++++++++++++++
+ init/init_parser.c      |  8 ++++++++
+ init/keywords.h         |  6 ++++++
+ init/property_service.c | 12 ++++++++++++
+ init/util.c             | 12 ++++++++++++
+ toolbox/chcon.c         |  6 ++++++
+ toolbox/getenforce.c    |  5 ++++-
+ toolbox/getsebool.c     |  6 ++++++
+ toolbox/id.c            |  4 ++++
+ toolbox/load_policy.c   |  6 ++++++
+ toolbox/ls.c            |  4 ++++
+ toolbox/restorecon.c    |  5 ++++-
+ toolbox/runcon.c        |  6 ++++++
+ toolbox/setenforce.c    |  6 ++++++
+ toolbox/setsebool.c     |  6 ++++++
+ 18 files changed, 132 insertions(+), 2 deletions(-)
+
+diff --git a/debuggerd/tombstone.c b/debuggerd/tombstone.c
+index 7009a8e..4e7eeab 100644
+--- a/debuggerd/tombstone.c
++++ b/debuggerd/tombstone.c
+@@ -38,7 +38,9 @@
+ #include <sys/socket.h>
+ #include <linux/un.h>
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/android.h>
++#endif
+ 
+ #include "machine.h"
+ #include "tombstone.h"
+@@ -813,10 +815,12 @@ char* engrave_tombstone(pid_t pid, pid_t tid, int signal, uintptr_t abort_msg_ad
+     mkdir(TOMBSTONE_DIR, 0755);
+     chown(TOMBSTONE_DIR, AID_SYSTEM, AID_SYSTEM);
+ 
++#ifdef HAVE_SELINUX
+     if (selinux_android_restorecon(TOMBSTONE_DIR) == -1) {
+         *detach_failed = false;
+         return NULL;
+     }
++#endif
+ 
+     int fd;
+     char* path = find_and_open_tombstone(&fd);
+diff --git a/init/builtins.c b/init/builtins.c
+index e8c8f91..a62abf1 100644
+--- a/init/builtins.c
++++ b/init/builtins.c
+@@ -36,8 +36,10 @@
+ #include <sys/system_properties.h>
+ #include <fs_mgr.h>
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ #include <selinux/label.h>
++#endif
+ 
+ #include "init.h"
+ #include "keywords.h"
+@@ -528,6 +530,7 @@ int do_swapon_all(int nargs, char **args)
+     return ret;
+ }
+ 
++#ifdef HAVE_SELINUX
+ int do_setcon(int nargs, char **args) {
+     if (is_selinux_enabled() <= 0)
+         return 0;
+@@ -545,6 +548,7 @@ int do_setenforce(int nargs, char **args) {
+     }
+     return 0;
+ }
++#endif
+ 
+ int do_setkey(int nargs, char **args)
+ {
+@@ -795,6 +799,7 @@ int do_chmod(int nargs, char **args) {
+     return 0;
+ }
+ 
++#ifdef HAVE_SELINUX
+ int do_restorecon(int nargs, char **args) {
+     int i;
+ 
+@@ -832,6 +837,7 @@ int do_setsebool(int nargs, char **args) {
+ 
+     return 0;
+ }
++#endif
+ 
+ int do_loglevel(int nargs, char **args) {
+     if (nargs == 2) {
+diff --git a/init/devices.c b/init/devices.c
+index 1893642..e9c6356 100644
+--- a/init/devices.c
++++ b/init/devices.c
+@@ -30,9 +30,11 @@
+ #include <sys/un.h>
+ #include <linux/netlink.h>
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ #include <selinux/label.h>
+ #include <selinux/android.h>
++#endif
+ 
+ #include <private/android_filesystem_config.h>
+ #include <sys/time.h>
+@@ -51,7 +53,9 @@
+ #define FIRMWARE_DIR2   "/vendor/firmware"
+ #define FIRMWARE_DIR3   "/firmware/image"
+ 
++#ifdef HAVE_SELINUX
+ extern struct selabel_handle *sehandle;
++#endif
+ 
+ static int device_fd = -1;
+ 
+@@ -149,6 +153,7 @@ void fixup_sys_perms(const char *upath)
+         INFO("fixup %s %d %d 0%o\n", buf, dp->uid, dp->gid, dp->perm);
+         chown(buf, dp->uid, dp->gid);
+         chmod(buf, dp->perm);
++#ifdef HAVE_SELINUX
+         if (sehandle) {
+             secontext = NULL;
+             selabel_lookup(sehandle, &secontext, buf, 0);
+@@ -157,6 +162,7 @@ void fixup_sys_perms(const char *upath)
+                 freecon(secontext);
+            }
+         }
++#endif
+     }
+ }
+ 
+@@ -199,14 +205,18 @@ static void make_device(const char *path,
+     unsigned gid;
+     mode_t mode;
+     dev_t dev;
++#ifdef HAVE_SELINUX
+     char *secontext = NULL;
++#endif
+ 
+     mode = get_device_perm(path, &uid, &gid) | (block ? S_IFBLK : S_IFCHR);
+ 
++#ifdef HAVE_SELINUX
+     if (sehandle) {
+         selabel_lookup(sehandle, &secontext, path, mode);
+         setfscreatecon(secontext);
+     }
++#endif
+ 
+     dev = makedev(major, minor);
+     /* Temporarily change egid to avoid race condition setting the gid of the
+@@ -219,10 +229,12 @@ static void make_device(const char *path,
+     chown(path, uid, -1);
+     setegid(AID_ROOT);
+ 
++#ifdef HAVE_SELINUX
+     if (secontext) {
+         freecon(secontext);
+         setfscreatecon(NULL);
+     }
++#endif
+ }
+ 
+ static void add_platform_device(const char *path)
+@@ -893,10 +905,12 @@ void device_init(void)
+     struct stat info;
+     int fd;
+ 
++#ifdef HAVE_SELINUX
+     sehandle = NULL;
+     if (is_selinux_enabled() > 0) {
+         sehandle = selinux_android_file_context_handle();
+     }
++#endif
+ 
+     /* is 256K enough? udev uses 16MB! */
+     device_fd = uevent_open_socket(256*1024, true);
+diff --git a/init/init.c b/init/init.c
+index bd7799e..7a18dc1 100644
+--- a/init/init.c
++++ b/init/init.c
+@@ -32,9 +32,11 @@
+ #include <sys/socket.h>
+ #include <sys/un.h>
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ #include <selinux/label.h>
+ #include <selinux/android.h>
++#endif
+ 
+ #include <libgen.h>
+ 
+@@ -157,7 +159,9 @@ void service_start(struct service *svc, const char *dynamic_args)
+     pid_t pid;
+     int needs_console;
+     int n;
++#ifdef HAVE_SELINUX
+     char *scon = NULL;
++#endif
+     int rc;
+ 
+         /* starting a service removes it from the disabled or reset
+@@ -196,6 +200,7 @@ void service_start(struct service *svc, const char *dynamic_args)
+         return;
+     }
+ 
++#ifdef HAVE_SELINUX
+     if (is_selinux_enabled() > 0) {
+         if (svc->seclabel) {
+             scon = strdup(svc->seclabel);
+@@ -229,6 +234,7 @@ void service_start(struct service *svc, const char *dynamic_args)
+             }
+         }
+     }
++#endif
+ 
+     NOTICE("starting '%s'\n", svc->name);
+ 
+@@ -250,7 +256,9 @@ void service_start(struct service *svc, const char *dynamic_args)
+         for (ei = svc->envvars; ei; ei = ei->next)
+             add_environment(ei->name, ei->value);
+ 
++#ifdef HAVE_SELINUX
+         setsockcreatecon(scon);
++#endif
+ 
+         for (si = svc->sockets; si; si = si->next) {
+             int socket_type = (
+@@ -263,9 +271,11 @@ void service_start(struct service *svc, const char *dynamic_args)
+             }
+         }
+ 
++#ifdef HAVE_SELINUX
+         freecon(scon);
+         scon = NULL;
+         setsockcreatecon(NULL);
++#endif
+ 
+         if (svc->ioprio_class != IoSchedClass_NONE) {
+             if (android_set_ioprio(getpid(), svc->ioprio_class, svc->ioprio_pri)) {
+@@ -311,12 +321,14 @@ void service_start(struct service *svc, const char *dynamic_args)
+                 _exit(127);
+             }
+         }
++#ifdef HAVE_SELINUX
+         if (svc->seclabel) {
+             if (is_selinux_enabled() > 0 && setexeccon(svc->seclabel) < 0) {
+                 ERROR("cannot setexeccon('%s'): %s\n", svc->seclabel, strerror(errno));
+                 _exit(127);
+             }
+         }
++#endif
+ 
+         if (!dynamic_args) {
+             if (execve(svc->args[0], (char**) svc->args, (char**) ENV) < 0) {
+@@ -343,7 +355,9 @@ void service_start(struct service *svc, const char *dynamic_args)
+         _exit(127);
+     }
+ 
++#ifdef HAVE_SELINUX
+     freecon(scon);
++#endif
+ 
+     if (pid < 0) {
+         ERROR("failed to start '%s'\n", svc->name);
+@@ -842,6 +856,7 @@ static int bootchart_init_action(int nargs, char **args)
+ }
+ #endif
+ 
++#ifdef HAVE_SELINUX
+ static const struct selinux_opt seopts_prop[] = {
+         { SELABEL_OPT_PATH, "/property_contexts" },
+         { 0, NULL }
+@@ -957,6 +972,7 @@ static void selinux_initialize(void)
+     INFO("SELinux: security_setenforce(%d)\n", is_enforcing);
+     security_setenforce(is_enforcing);
+ }
++#endif
+ 
+ int main(int argc, char **argv)
+ {
+@@ -1011,6 +1027,7 @@ int main(int argc, char **argv)
+ 
+     process_kernel_cmdline();
+ 
++#ifdef HAVE_SELINUX
+     union selinux_callback cb;
+     cb.func_log = klog_write;
+     selinux_set_callback(SELINUX_CB_LOG, cb);
+@@ -1027,6 +1044,7 @@ int main(int argc, char **argv)
+     restorecon("/dev/socket");
+     restorecon("/dev/__properties__");
+     restorecon_recursive("/sys");
++#endif
+ 
+     is_charger = !strcmp(bootmode, "charger");
+ 
+diff --git a/init/init_parser.c b/init/init_parser.c
+index 776c699..306e023 100644
+--- a/init/init_parser.c
++++ b/init/init_parser.c
+@@ -134,20 +134,28 @@ int lookup_keyword(const char *s)
+         if (!strcmp(s, "owerctl")) return K_powerctl;
+     case 'r':
+         if (!strcmp(s, "estart")) return K_restart;
++#ifdef HAVE_SELINUX
+         if (!strcmp(s, "estorecon")) return K_restorecon;
++#endif
+         if (!strcmp(s, "mdir")) return K_rmdir;
+         if (!strcmp(s, "m")) return K_rm;
+         break;
+     case 's':
++#ifdef HAVE_SELINUX
+         if (!strcmp(s, "eclabel")) return K_seclabel;
++#endif
+         if (!strcmp(s, "ervice")) return K_service;
++#ifdef HAVE_SELINUX
+         if (!strcmp(s, "etcon")) return K_setcon;
+         if (!strcmp(s, "etenforce")) return K_setenforce;
++#endif
+         if (!strcmp(s, "etenv")) return K_setenv;
+         if (!strcmp(s, "etkey")) return K_setkey;
+         if (!strcmp(s, "etprop")) return K_setprop;
+         if (!strcmp(s, "etrlimit")) return K_setrlimit;
++#ifdef HAVE_SELINUX
+         if (!strcmp(s, "etsebool")) return K_setsebool;
++#endif
+         if (!strcmp(s, "ocket")) return K_socket;
+         if (!strcmp(s, "tart")) return K_start;
+         if (!strcmp(s, "top")) return K_stop;
+diff --git a/init/keywords.h b/init/keywords.h
+index 5a44df3..dccb28d 100644
+--- a/init/keywords.h
++++ b/init/keywords.h
+@@ -70,18 +70,24 @@ enum {
+     KEYWORD(onrestart,   OPTION,  0, 0)
+     KEYWORD(powerctl,    COMMAND, 1, do_powerctl)
+     KEYWORD(restart,     COMMAND, 1, do_restart)
++#ifdef HAVE_SELINUX
+     KEYWORD(restorecon,  COMMAND, 1, do_restorecon)
++#endif
+     KEYWORD(rm,          COMMAND, 1, do_rm)
+     KEYWORD(rmdir,       COMMAND, 1, do_rmdir)
+     KEYWORD(seclabel,    OPTION,  0, 0)
+     KEYWORD(service,     SECTION, 0, 0)
++#ifdef HAVE_SELINUX
+     KEYWORD(setcon,      COMMAND, 1, do_setcon)
+     KEYWORD(setenforce,  COMMAND, 1, do_setenforce)
++#endif
+     KEYWORD(setenv,      OPTION,  2, 0)
+     KEYWORD(setkey,      COMMAND, 0, do_setkey)
+     KEYWORD(setprop,     COMMAND, 2, do_setprop)
+     KEYWORD(setrlimit,   COMMAND, 3, do_setrlimit)
++#ifdef HAVE_SELINUX
+     KEYWORD(setsebool,   COMMAND, 2, do_setsebool)
++#endif
+     KEYWORD(socket,      OPTION,  0, 0)
+     KEYWORD(start,       COMMAND, 1, do_start)
+     KEYWORD(stop,        COMMAND, 1, do_stop)
+diff --git a/init/property_service.c b/init/property_service.c
+index 9ac2781..05013bf 100644
+--- a/init/property_service.c
++++ b/init/property_service.c
+@@ -41,8 +41,10 @@
+ #include <sys/atomics.h>
+ #include <private/android_filesystem_config.h>
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ #include <selinux/label.h>
++#endif
+ 
+ #include "property_service.h"
+ #include "init.h"
+@@ -149,6 +151,7 @@ static int init_property_area(void)
+ 
+ static int check_mac_perms(const char *name, char *sctx)
+ {
++#ifdef HAVE_SELIINUX
+     if (is_selinux_enabled() <= 0)
+         return 1;
+ 
+@@ -172,6 +175,9 @@ static int check_mac_perms(const char *name, char *sctx)
+     freecon(tctx);
+  err:
+     return result;
++#else
++    return 1;
++#endif
+ }
+ 
+ static int check_control_mac_perms(const char *name, char *sctx)
+@@ -349,7 +355,9 @@ int property_set(const char *name, const char *value)
+         write_persistent_property(name, value);
+     } else if (strcmp("selinux.reload_policy", name) == 0 &&
+                strcmp("1", value) == 0) {
++#ifdef HAVE_SELINUX
+         selinux_reload_policy();
++#endif
+     }
+     property_changed(name, value);
+     return 0;
+@@ -397,7 +405,9 @@ void handle_property_set_fd()
+             return;
+         }
+ 
++#ifdef HAVE_SELINUX
+         getpeercon(s, &source_ctx);
++#endif
+ 
+         if(memcmp(msg.name,"ctl.",4) == 0) {
+             // Keep the old close-socket-early behavior when handling
+@@ -422,7 +432,9 @@ void handle_property_set_fd()
+             // the property is written to memory.
+             close(s);
+         }
++#ifdef HAVE_SELINUX
+         freecon(source_ctx);
++#endif
+         break;
+ 
+     default:
+diff --git a/init/util.c b/init/util.c
+index 1908b3a..16f99cd 100644
+--- a/init/util.c
++++ b/init/util.c
+@@ -24,7 +24,9 @@
+ #include <time.h>
+ #include <ftw.h>
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/label.h>
++#endif
+ 
+ #include <sys/stat.h>
+ #include <sys/types.h>
+@@ -107,12 +109,14 @@ int create_socket(const char *name, int type, mode_t perm, uid_t uid, gid_t gid)
+         goto out_close;
+     }
+ 
++#ifdef HAVE_SELINUX
+     secon = NULL;
+     if (sehandle) {
+         ret = selabel_lookup(sehandle, &secon, addr.sun_path, S_IFSOCK);
+         if (ret == 0)
+             setfscreatecon(secon);
+     }
++#endif
+ 
+     ret = bind(fd, (struct sockaddr *) &addr, sizeof (addr));
+     if (ret) {
+@@ -120,8 +124,10 @@ int create_socket(const char *name, int type, mode_t perm, uid_t uid, gid_t gid)
+         goto out_unlink;
+     }
+ 
++#ifdef HAVE_SELINUX
+     setfscreatecon(NULL);
+     freecon(secon);
++#endif
+ 
+     chown(addr.sun_path, uid, gid);
+     chmod(addr.sun_path, perm);
+@@ -474,25 +480,30 @@ int make_dir(const char *path, mode_t mode)
+ {
+     int rc;
+ 
++#ifdef HAVE_SELINUX
+     char *secontext = NULL;
+ 
+     if (sehandle) {
+         selabel_lookup(sehandle, &secontext, path, mode);
+         setfscreatecon(secontext);
+     }
++#endif
+ 
+     rc = mkdir(path, mode);
+ 
++#ifdef HAVE_SELINUX
+     if (secontext) {
+         int save_errno = errno;
+         freecon(secontext);
+         setfscreatecon(NULL);
+         errno = save_errno;
+     }
++#endif
+ 
+     return rc;
+ }
+ 
++#ifdef HAVE_SELINUX
+ int restorecon(const char *pathname)
+ {
+     char *secontext = NULL;
+@@ -527,3 +538,4 @@ int restorecon_recursive(const char* pathname)
+     int flags = FTW_DEPTH | FTW_MOUNT | FTW_PHYS;
+     return nftw(pathname, nftw_restorecon, fd_limit, flags);
+ }
++#endif
+diff --git a/toolbox/chcon.c b/toolbox/chcon.c
+index d594b9b..3cdc3e5 100644
+--- a/toolbox/chcon.c
++++ b/toolbox/chcon.c
+@@ -2,10 +2,13 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <errno.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
++#endif
+ 
+ int chcon_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     int rc, i;
+ 
+     if (argc < 3) {
+@@ -22,4 +25,7 @@ int chcon_main(int argc, char **argv)
+         }
+     }
+     exit(0);
++#else
++    return 0;
++#endif
+ }
+diff --git a/toolbox/getenforce.c b/toolbox/getenforce.c
+index 9e7589a..c826f96 100644
+--- a/toolbox/getenforce.c
++++ b/toolbox/getenforce.c
+@@ -2,10 +2,13 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <errno.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
++#endif
+ 
+ int getenforce_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     int rc;
+ 
+     rc = is_selinux_enabled();
+@@ -25,6 +28,6 @@ int getenforce_main(int argc, char **argv)
+         printf("Enforcing\n");
+     else
+         printf("Permissive\n");
+-
++#endif
+     return 0;
+ }
+diff --git a/toolbox/getsebool.c b/toolbox/getsebool.c
+index aab5200..b727be5 100644
+--- a/toolbox/getsebool.c
++++ b/toolbox/getsebool.c
+@@ -4,6 +4,7 @@
+ #include <getopt.h>
+ #include <errno.h>
+ #include <string.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ 
+ static void usage(const char *progname)
+@@ -11,9 +12,11 @@ static void usage(const char *progname)
+     fprintf(stderr, "usage:  %s -a or %s boolean...\n", progname, progname);
+     exit(1);
+ }
++#endif
+ 
+ int getsebool_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     int i, get_all = 0, rc = 0, active, pending, len = 0, opt;
+     char **names;
+ 
+@@ -101,4 +104,7 @@ out:
+         free(names[i]);
+     free(names);
+     return rc;
++#else
++    return 0;
++#endif
+ }
+diff --git a/toolbox/id.c b/toolbox/id.c
+index 8ec79c1..51e046a 100644
+--- a/toolbox/id.c
++++ b/toolbox/id.c
+@@ -4,7 +4,9 @@
+ #include <sys/types.h>
+ #include <pwd.h>
+ #include <grp.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
++#endif
+ 
+ static void print_uid(uid_t uid)
+ {
+@@ -48,10 +50,12 @@ int id_main(int argc, char **argv)
+             print_gid(list[n]);
+         }
+     }
++#ifdef HAVE_SELINUX
+     if (getcon(&secctx) == 0) {
+         printf(" context=%s", secctx);
+         free(secctx);
+     }
++#endif
+     printf("\n");
+     return 0;
+ }
+diff --git a/toolbox/load_policy.c b/toolbox/load_policy.c
+index eb5aba6..5e6665d 100644
+--- a/toolbox/load_policy.c
++++ b/toolbox/load_policy.c
+@@ -6,10 +6,13 @@
+ #include <sys/stat.h>
+ #include <sys/mman.h>
+ #include <errno.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
++#endif
+ 
+ int load_policy_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     int fd, rc, vers;
+     struct stat sb;
+     void *map;
+@@ -46,4 +49,7 @@ int load_policy_main(int argc, char **argv)
+     munmap(map, sb.st_size);
+     close(fd);
+     exit(0);
++#else
++    return 0;
++#endif
+ }
+diff --git a/toolbox/ls.c b/toolbox/ls.c
+index 5324511..ac84ac2 100644
+--- a/toolbox/ls.c
++++ b/toolbox/ls.c
+@@ -5,7 +5,9 @@
+ #include <dirent.h>
+ #include <errno.h>
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
++#endif
+ 
+ #include <sys/stat.h>
+ #include <unistd.h>
+@@ -255,10 +257,12 @@ static int listfile_maclabel(const char *path, struct stat *s, int flags)
+         name++;
+     }
+ 
++#ifdef HAVE_SELINUX
+     lgetfilecon(path, &maclabel);
+     if (!maclabel) {
+         return -1;
+     }
++#endif
+ 
+     mode2str(s->st_mode, mode);
+     user2str(s->st_uid, user);
+diff --git a/toolbox/restorecon.c b/toolbox/restorecon.c
+index f9f604f..77a2d06 100644
+--- a/toolbox/restorecon.c
++++ b/toolbox/restorecon.c
+@@ -5,6 +5,7 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <fts.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ #include <selinux/label.h>
+ #include <selinux/android.h>
+@@ -50,9 +51,11 @@ static int restore(const char *pathname, const struct stat *sb)
+     freecon(newcontext);
+     return 0;
+ }
++#endif
+ 
+ int restorecon_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     int ch, recurse = 0, ftsflags = FTS_PHYSICAL;
+     int i = 0;
+ 
+@@ -131,6 +134,6 @@ int restorecon_main(int argc, char **argv)
+             restore(argv[i], &sb);
+         }
+     }
+-
++#endif
+     return 0;
+ }
+diff --git a/toolbox/runcon.c b/toolbox/runcon.c
+index 4a57bf3..b188ab0 100644
+--- a/toolbox/runcon.c
++++ b/toolbox/runcon.c
+@@ -3,10 +3,13 @@
+ #include <string.h>
+ #include <unistd.h>
+ #include <errno.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
++#endif
+ 
+ int runcon_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     int rc;
+ 
+     if (argc < 3) {
+@@ -25,4 +28,7 @@ int runcon_main(int argc, char **argv)
+     execvp(argv[0], argv);
+     fprintf(stderr, "Could not exec %s:  %s\n", argv[0], strerror(errno));
+     exit(3);
++#else
++    return 0;
++#endif
+ }
+diff --git a/toolbox/setenforce.c b/toolbox/setenforce.c
+index 444073d..37fc8d2 100644
+--- a/toolbox/setenforce.c
++++ b/toolbox/setenforce.c
+@@ -5,17 +5,22 @@
+ #include <string.h>
+ #include <strings.h>
+ #include <errno.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
++#endif
+ 
++#ifdef HAVE_SELINUX
+ static void usage(const char *progname)
+ {
+     fprintf(stderr, "usage:  %s [ Enforcing | Permissive | 1 | 0 ]\n",
+             progname);
+     exit(1);
+ }
++#endif
+ 
+ int setenforce_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     int rc = 0;
+     if (argc != 2) {
+         usage(argv[0]);
+@@ -40,5 +45,6 @@ int setenforce_main(int argc, char **argv)
+                 argv[0], strerror(errno));
+         return 2;
+     }
++#endif
+     return 0;
+ }
+diff --git a/toolbox/setsebool.c b/toolbox/setsebool.c
+index f79a612..ac875f9 100644
+--- a/toolbox/setsebool.c
++++ b/toolbox/setsebool.c
+@@ -5,6 +5,7 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <errno.h>
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ #include <errno.h>
+ 
+@@ -34,13 +35,18 @@ static int do_setsebool(int nargs, char **args) {
+ 
+     return 0;
+ }
++#endif
+ 
+ int setsebool_main(int argc, char **argv)
+ {
++#ifdef HAVE_SELINUX
+     if (argc != 3) {
+         fprintf(stderr, "Usage:  %s name value\n", argv[0]);
+         exit(1);
+     }
+ 
+     return do_setsebool(argc, argv);
++#else
++    return 0;
++#endif
+ }
+-- 
+2.7.4
+

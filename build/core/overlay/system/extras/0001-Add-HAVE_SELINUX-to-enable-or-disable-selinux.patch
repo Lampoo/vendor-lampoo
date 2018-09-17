@@ -1,0 +1,164 @@
+From ebea47a0437c4f2bcc9f2f0f33776cd8ee0699cb Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Fri, 14 Sep 2018 17:05:01 +0800
+Subject: [PATCH] Add HAVE_SELINUX to enable or disable selinux
+
+---
+ ext4_utils/make_ext4fs.c      | 12 ++++++++++++
+ ext4_utils/make_ext4fs_main.c |  8 ++++++++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/ext4_utils/make_ext4fs.c b/ext4_utils/make_ext4fs.c
+index c2a2665..f49d8ff 100644
+--- a/ext4_utils/make_ext4fs.c
++++ b/ext4_utils/make_ext4fs.c
+@@ -59,9 +59,11 @@
+ 
+ #else
+ 
++#ifdef HAVE_SELINUX
+ #include <selinux/selinux.h>
+ #include <selinux/label.h>
+ #include <selinux/android.h>
++#endif
+ 
+ #define O_BINARY 0
+ 
+@@ -180,6 +182,7 @@ static u32 build_directory_structure(const char *full_path, const char *dir_path
+ 			error("can't set android permissions - built without android support");
+ #endif
+ 		}
++#ifdef HAVE_SEINUX
+ #ifndef USE_MINGW
+ 		if (sehnd) {
+ 			if (selabel_lookup(sehnd, &dentries[i].secon, dentries[i].path, stat.st_mode) < 0) {
+@@ -190,6 +193,7 @@ static u32 build_directory_structure(const char *full_path, const char *dir_path
+ 				printf("Labeling %s as %s\n", dentries[i].path, dentries[i].secon);
+ 		}
+ #endif
++#endif
+ 
+ 		if (S_ISREG(stat.st_mode)) {
+ 			dentries[i].file_type = EXT4_FT_REG_FILE;
+@@ -231,10 +235,12 @@ static u32 build_directory_structure(const char *full_path, const char *dir_path
+ 		dentries[0].file_type = EXT4_FT_DIR;
+ 		dentries[0].uid = 0;
+ 		dentries[0].gid = 0;
++#ifdef HAVE_SELINUX
+ 		if (sehnd) {
+ 			if (selabel_lookup(sehnd, &dentries[0].secon, dentries[0].path, dentries[0].mode) < 0)
+ 				error("cannot lookup security context for %s", dentries[0].path);
+ 		}
++#endif
+ 		entries++;
+ 		dirs++;
+ 	}
+@@ -273,6 +279,7 @@ static u32 build_directory_structure(const char *full_path, const char *dir_path
+ 		if (ret)
+ 			error("failed to set permissions on %s\n", dentries[i].path);
+ 
++#ifdef HAVE_SELINUX
+ 		/*
+ 		 * It's important to call inode_set_selinux() before
+ 		 * inode_set_capabilities(). Extended attributes need to
+@@ -283,6 +290,7 @@ static u32 build_directory_structure(const char *full_path, const char *dir_path
+ 		ret = inode_set_selinux(entry_inode, dentries[i].secon);
+ 		if (ret)
+ 			error("failed to set SELinux context on %s\n", dentries[i].path);
++#endif
+ 		ret = inode_set_capabilities(entry_inode, dentries[i].capabilities);
+ 		if (ret)
+ 			error("failed to set capability on %s\n", dentries[i].path);
+@@ -291,7 +299,9 @@ static u32 build_directory_structure(const char *full_path, const char *dir_path
+ 		free(dentries[i].full_path);
+ 		free(dentries[i].link);
+ 		free((void *)dentries[i].filename);
++#ifdef HAVE_SELINUX
+ 		free(dentries[i].secon);
++#endif
+ 	}
+ 
+ 	free(dentries);
+@@ -575,6 +585,7 @@ int make_ext4fs_internal(int fd, const char *_directory,
+ 	root_mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+ 	inode_set_permissions(root_inode_num, root_mode, 0, 0, 0);
+ 
++#ifdef HAVE_SELINUX
+ #ifndef USE_MINGW
+ 	if (sehnd) {
+ 		char *secontext = NULL;
+@@ -591,6 +602,7 @@ int make_ext4fs_internal(int fd, const char *_directory,
+ 		freecon(secontext);
+ 	}
+ #endif
++#endif
+ 
+ 	ext4_update_free();
+ 
+diff --git a/ext4_utils/make_ext4fs_main.c b/ext4_utils/make_ext4fs_main.c
+index b6c740d..4aec6da 100644
+--- a/ext4_utils/make_ext4fs_main.c
++++ b/ext4_utils/make_ext4fs_main.c
+@@ -29,6 +29,7 @@
+ #include <private/android_filesystem_config.h>
+ #endif
+ 
++#ifdef HAVE_SELINUX
+ #ifndef USE_MINGW
+ #include <selinux/selinux.h>
+ #include <selinux/label.h>
+@@ -36,6 +37,7 @@
+ #else
+ struct selabel_handle;
+ #endif
++#endif
+ 
+ #include "make_ext4fs.h"
+ #include "ext4_utils.h"
+@@ -72,9 +74,11 @@ int main(int argc, char **argv)
+ 	int exitcode;
+ 	int verbose = 0;
+ 	struct selabel_handle *sehnd = NULL;
++#ifdef HAVE_SELINUX
+ #ifndef USE_MINGW
+ 	struct selinux_opt seopts[] = { { SELABEL_OPT_PATH, "" } };
+ #endif
++#endif
+ 
+ 	while ((opt = getopt(argc, argv, "l:j:b:g:i:I:L:a:S:fwzJsctv")) != -1) {
+ 		switch (opt) {
+@@ -131,6 +135,7 @@ int main(int argc, char **argv)
+ 			fprintf(stderr, "Warning: -t (initialize inode tables) is deprecated\n");
+ 			break;
+ 		case 'S':
++#ifdef HAVE_SELINUX
+ #ifndef USE_MINGW
+ 			seopts[0].value = optarg;
+ 			sehnd = selabel_open(SELABEL_CTX_FILE, seopts, 1);
+@@ -139,6 +144,7 @@ int main(int argc, char **argv)
+ 				exit(EXIT_FAILURE);
+ 			}
+ #endif
++#endif
+ 			break;
+ 		case 'v':
+ 			verbose = 1;
+@@ -150,6 +156,7 @@ int main(int argc, char **argv)
+ 	}
+ 
+ #if !defined(HOST)
++#ifdef HAVE_SELINUX
+ 	// Use only if -S option not requested
+ 	if (!sehnd && mountpoint) {
+ 		sehnd = selinux_android_file_context_handle();
+@@ -160,6 +167,7 @@ int main(int argc, char **argv)
+ 		}
+ 	}
+ #endif
++#endif
+ 
+ 	if (wipe && sparse) {
+ 		fprintf(stderr, "Cannot specifiy both wipe and sparse\n");
+-- 
+2.7.4
+

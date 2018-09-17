@@ -1,0 +1,25 @@
+From 417f8ad245149ed9c02233dd24cc494cecff7702 Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Fri, 14 Sep 2018 09:44:31 +0800
+Subject: [PATCH 2/6] backport to include any device specific definitions.mk
+ file
+
+---
+ core/definitions.mk | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/core/definitions.mk b/core/definitions.mk
+index b35a6c3..5c63a62 100644
+--- a/core/definitions.mk
++++ b/core/definitions.mk
+@@ -2125,6 +2125,7 @@ include $(BUILD_SYSTEM)/distdir.mk
+ 
+ # Include any vendor specific definitions.mk file
+ -include $(TOPDIR)vendor/*/build/core/definitions.mk
++-include $(TOPDIR)device/*/build/core/definitions.mk
+ 
+ # broken:
+ #	$(foreach file,$^,$(if $(findstring,.a,$(suffix $file)),-l$(file),$(file)))
+-- 
+2.7.4
+

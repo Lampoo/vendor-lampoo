@@ -1,0 +1,44 @@
+From 770e801db7747a75131954570fa21a5b73aab287 Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Fri, 14 Sep 2018 09:45:46 +0800
+Subject: [PATCH 3/6] backport of JAVA_NOT_REQUIRED
+
+Backport from AOSP Nougat, use this variable in device's BoardConfig.mk
+file and set to true if java is NOT needed.
+---
+ core/main.mk | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/core/main.mk b/core/main.mk
+index d424b25..f4f1514 100644
+--- a/core/main.mk
++++ b/core/main.mk
+@@ -62,6 +62,9 @@ TOPDIR :=
+ 
+ BUILD_SYSTEM := $(TOPDIR)build/core
+ 
++# Ensure JAVA_NOT_REQUIRED is not set externally.
++JAVA_NOT_REQUIRED := false
++
+ # This is the default target.  It must be the first declared target.
+ .PHONY: droid
+ DEFAULT_GOAL := droid
+@@ -140,6 +143,7 @@ $(warning ************************************************************)
+ $(error Directory names containing spaces not supported)
+ endif
+ 
++ifneq ($(JAVA_NOT_REQUIRED), false)
+ # Check for the corrent jdk
+ ifneq ($(shell java -version 2>&1 | grep -i openjdk),)
+ $(info ************************************************************)
+@@ -183,6 +187,7 @@ $(info $(space)$(space)$(space)$(space)https://source.android.com/source/downloa
+ $(info ************************************************************)
+ $(error stop)
+ endif
++endif
+ 
+ ifndef BUILD_EMULATOR
+ ifeq (darwin,$(HOST_OS))
+-- 
+2.7.4
+

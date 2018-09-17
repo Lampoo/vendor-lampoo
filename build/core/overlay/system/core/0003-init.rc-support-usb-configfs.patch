@@ -1,0 +1,40 @@
+From 23190c6e5551db8a81931b3f835136f46840a5ce Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Fri, 14 Sep 2018 17:15:40 +0800
+Subject: [PATCH 3/3] init.rc: support usb configfs
+
+---
+ rootdir/Android.mk | 2 +-
+ rootdir/init.rc    | 3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/rootdir/Android.mk b/rootdir/Android.mk
+index 2c16084..4cd88c9 100644
+--- a/rootdir/Android.mk
++++ b/rootdir/Android.mk
+@@ -26,7 +26,7 @@ LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT)
+ #
+ # create some directories (some are mount points)
+ LOCAL_POST_INSTALL_CMD := mkdir -p $(addprefix $(TARGET_ROOT_OUT)/, \
+-    sbin dev proc sys system data)
++    sbin dev proc sys system data config)
+ 
+ include $(BUILD_SYSTEM)/base_rules.mk
+ 
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index 82b83d1..b7a840f 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -83,6 +83,9 @@ loglevel 3
+     mkdir /mnt/obb 0700 root system
+     mount tmpfs tmpfs /mnt/obb mode=0755,gid=1000
+ 
++    # USB configfs
++    mount configfs none /config
++
+     write /proc/sys/kernel/panic_on_oops 1
+     write /proc/sys/kernel/hung_task_timeout_secs 0
+     write /proc/cpu/alignment 4
+-- 
+2.7.4
+
