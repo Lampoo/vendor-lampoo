@@ -68,7 +68,7 @@ ifneq ($(KERNEL_DIR),)
 	@cp -f $(KERNEL_DIR)arch/arm/boot/dts/at91-sama5d2_$(TARGET_PRODUCT).dtb $(PRODUCT_IMAGE_OUT)
 endif
 ifneq ($(AT91BOOTSTRAP_DIR),)
-	@cp -f $(AT91BOOTSTRAP_DIR)binaries/at91bootstrap.bin
+	@cp -f $(AT91BOOTSTRAP_DIR)binaries/at91bootstrap.bin $(PRODUCT_IMAGE_OUT)
 endif
 	@cp -f $(INSTALLED_SYSTEMIMAGE) $(PRODUCT_IMAGE_OUT)
 	@cp -f $(INSTALLED_USERDATAIMAGE_TARGET) $(PRODUCT_IMAGE_OUT)
