@@ -27,7 +27,7 @@ index d424b25..f4f1514 100644
  $(error Directory names containing spaces not supported)
  endif
  
-+ifneq ($(JAVA_NOT_REQUIRED), false)
++ifeq ($(JAVA_NOT_REQUIRED), false)
  # Check for the corrent jdk
  ifneq ($(shell java -version 2>&1 | grep -i openjdk),)
  $(info ************************************************************)
