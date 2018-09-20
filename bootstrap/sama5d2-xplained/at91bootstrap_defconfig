@@ -200,7 +200,7 @@ CONFIG_LINUX_IMAGE=y
 # Kernel Image Storage Setup
 #
 CONFIG_OVERRIDE_CMDLINE=y
-CONFIG_LINUX_KERNEL_ARG_STRING="console=ttyS0,115200 mem=16M mtdparts=f0020000.spi:4M(bootstrap/kernel)ro,12M(rootfs),-(data) root=/dev/mtdblock1 ro rootfstype=ext4 init=/init androidboot.hardware=jacobian"
+CONFIG_LINUX_KERNEL_ARG_STRING="console=ttyS0,115200 mtdparts=f0020000.spi:4M(bootstrap/kernel)ro,12M(rootfs),-(data) root=/dev/mtdblock1 ro rootfstype=ext4 init=/init androidboot.hardware=bootstrap"
 CONFIG_MEM_BANK="0x20000000"
 CONFIG_MEM_SIZE="0x01000000"
 CONFIG_IMG_ADDRESS="0x0006C000"
