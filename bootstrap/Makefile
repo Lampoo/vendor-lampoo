@@ -2,7 +2,8 @@ SHELL					:= /bin/bash
 
 NCPUS					:= $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 
-CROSS_COMPILE				?= $(abspath $(TOPDIR)prebuilts/gcc/linux-x86/arm/arm-eabi-4.6/bin/arm-eabi-)
+# On ubuntu install by `sudo apt-get install gcc-arm-embedded`
+CROSS_COMPILE				?= arm-none-eabi-
 
 KERNEL_DIR				?= $(wildcard $(TOPDIR)kernel/)
 
