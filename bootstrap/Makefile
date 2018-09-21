@@ -89,5 +89,5 @@ ifneq ($(SAMBA_DEFSCRIPT),)
 upload: PRODUCT_IMAGE_OUT := $(PRODUCT_OUT)/image
 upload: SAMBA := $(abspath $(TOPDIR)external/sam-ba-3.2.2/sam-ba)
 upload: $(SAMBA)
-	$(hide)cd $(PRODUCT_OUT) && $(SAMBA) -x $(SAMBA_DEFSCRIPT)
+	$(hide)cd $(PRODUCT_IMAGE_OUT) && $(SAMBA) -x $(SAMBA_DEFSCRIPT)
 endif
