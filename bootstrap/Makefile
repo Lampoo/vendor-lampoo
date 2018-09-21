@@ -22,19 +22,20 @@ CLEAN_RULE				+= kernel_clean
 
 LINUX_DEFCONFIG ?= $(wildcard $(PRODUCT_DIR)$(TARGET_DEVICE)/kernel_defconfig)
 kernel_not_configured := $(wildcard $(KERNEL_DIR).config)
+.PHONY: kernel_build kernel_clean
 kernel_build:
 ifeq ($(kernel_not_configured),)
 ifneq ($(LINUX_DEFCONFIG),)
-	@cp $(LINUX_DEFCONFIG) $(KERNEL_DIR).config
+	$(hide)cp $(LINUX_DEFCONFIG) $(KERNEL_DIR).config
 else
-	$(MAKE) -C $(KERNEL_DIR) ARCH=arm sama5_$(TARGET_PRODUCT)_defconfig
+	$(hide)$(MAKE) -C $(KERNEL_DIR) ARCH=arm sama5_$(TARGET_PRODUCT)_defconfig
 endif
 endif
-	$(MAKE) -C $(KERNEL_DIR) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) zImage -j$(NCPUS)
-	$(MAKE) -C $(KERNEL_DIR) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) at91-sama5d2_$(TARGET_PRODUCT).dtb
+	$(hide)$(MAKE) -C $(KERNEL_DIR) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) zImage -j$(NCPUS)
+	$(hide)$(MAKE) -C $(KERNEL_DIR) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) at91-sama5d2_$(TARGET_PRODUCT).dtb
 
 kernel_clean:
-	$(MAKE) -C $(KERNEL_DIR) ARCH=arm clean
+	$(hide)$(MAKE) -C $(KERNEL_DIR) ARCH=arm clean
 endif
 
 ifneq ($(AT91BOOTSTRAP_DIR),)
@@ -43,18 +44,19 @@ CLEAN_RULE				+= at91bootstrap_clean
 
 AT91BOOTSTRAP_DEFCONFIG ?= $(wildcard $(PRODUCT_DIR)$(TARGET_DEVICE)/at91bootstrap_defconfig)
 at91bootstrap_not_configured := $(wildcard $(AT91BOOTSTRAP_DIR).config)
+.PHONY: at91bootstrap_build at91bootstrap_clean
 at91bootstrap_build:
 ifeq ($(at91bootstrap_not_configured),)
 ifneq ($(AT91BOOTSTRAP_DEFCONFIG),)
-	@cp $(AT91BOOTSTRAP_DEFCONFIG) $(AT91BOOTSTRAP_DIR).config
+	$(hide)cp $(AT91BOOTSTRAP_DEFCONFIG) $(AT91BOOTSTRAP_DIR).config
 else
-	$(MAKE) -C $(AT91BOOTSTRAP_DIR) ARCH=arm sama5_$(TARGET_PRODUCT)_defconfig
+	$(hide)$(MAKE) -C $(AT91BOOTSTRAP_DIR) ARCH=arm sama5_$(TARGET_PRODUCT)_defconfig
 endif
 endif
-	$(MAKE) -C $(AT91BOOTSTRAP_DIR) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE)
+	$(hide)$(MAKE) -C $(AT91BOOTSTRAP_DIR) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE)
 
 at91bootstrap_clean:
-	$(MAKE) -C $(AT91BOOTSTRAP_DIR) ARCH=arm clean
+	$(hide)$(MAKE) -C $(AT91BOOTSTRAP_DIR) ARCH=arm clean
 endif
 
 PHONY += droid
@@ -63,17 +65,17 @@ CLEAN_RULE += clean
 .PHONY: bootstrap
 bootstrap: PRODUCT_IMAGE_OUT := $(PRODUCT_OUT)/image
 bootstrap: $(PHONY)
-	@mkdir -p $(PRODUCT_IMAGE_OUT)
+	$(hide)mkdir -p $(PRODUCT_IMAGE_OUT)
 ifneq ($(KERNEL_DIR),)
-	@cp -f $(KERNEL_DIR)arch/arm/boot/zImage $(PRODUCT_IMAGE_OUT)
-	@cp -f $(KERNEL_DIR)arch/arm/boot/dts/at91-sama5d2_$(TARGET_PRODUCT).dtb $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(KERNEL_DIR)arch/arm/boot/zImage $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(KERNEL_DIR)arch/arm/boot/dts/at91-sama5d2_$(TARGET_PRODUCT).dtb $(PRODUCT_IMAGE_OUT)
 endif
 ifneq ($(AT91BOOTSTRAP_DIR),)
-	@cp -f $(AT91BOOTSTRAP_DIR)binaries/at91bootstrap.bin $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(AT91BOOTSTRAP_DIR)binaries/at91bootstrap.bin $(PRODUCT_IMAGE_OUT)
 endif
-	@cp -f $(INSTALLED_SYSTEMIMAGE) $(PRODUCT_IMAGE_OUT)
-	@cp -f $(INSTALLED_USERDATAIMAGE_TARGET) $(PRODUCT_IMAGE_OUT)
-	@echo Images generated at $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(INSTALLED_SYSTEMIMAGE) $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(INSTALLED_USERDATAIMAGE_TARGET) $(PRODUCT_IMAGE_OUT)
+	$(hide)echo Images generated at $(PRODUCT_IMAGE_OUT)
 
 .PHONY: bootstrap_clean
 bootstrap_clean: $(CLEAN_RULE)
