@@ -1,0 +1,34 @@
+From 8f1ad93b1c865942ef0a282efbf6cf89d5e90140 Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Fri, 21 Sep 2018 11:02:05 +0800
+Subject: [PATCH 8/8] core: combo: add cortex-a5 support
+
+---
+ core/combo/arch/arm/armv7-a-neon.mk | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/core/combo/arch/arm/armv7-a-neon.mk b/core/combo/arch/arm/armv7-a-neon.mk
+index 057ce93..dc8758f 100644
+--- a/core/combo/arch/arm/armv7-a-neon.mk
++++ b/core/combo/arch/arm/armv7-a-neon.mk
+@@ -12,6 +12,9 @@ else
+ ifeq ($(strip $(TARGET_CPU_VARIANT)),cortex-a8)
+ 	arch_variant_cflags := -mcpu=cortex-a8
+ else
++ifeq ($(strip $(TARGET_CPU_VARIANT)),cortex-a5)
++	arch_variant_cflags := -mcpu=cortex-a5
++else
+ ifeq ($(strip $(TARGET_CPU_VARIANT)),cortex-a7)
+ 	arch_variant_cflags := -mcpu=cortex-a7
+ else
+@@ -19,6 +22,7 @@ else
+ endif
+ endif
+ endif
++endif
+ 
+ arch_variant_cflags += \
+     -mfloat-abi=softfp \
+-- 
+2.7.4
+
