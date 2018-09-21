@@ -2,8 +2,8 @@ SHELL					:= /bin/bash
 
 NCPUS					:= $(shell getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 
-# On ubuntu install by `sudo apt-get install gcc-arm-embedded`
-CROSS_COMPILE				?= arm-none-eabi-
+# https://releases.linaro.org/components/toolchain/binaries/latest/arm-eabi/
+CROSS_COMPILE				?= arm-eabi-
 
 KERNEL_DIR				?= $(wildcard $(TOPDIR)kernel/)
 
