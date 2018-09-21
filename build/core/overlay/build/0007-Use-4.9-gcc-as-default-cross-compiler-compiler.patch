@@ -1,0 +1,34 @@
+From b3b0b167723755a31a34a4b7033e2d21e3ce1219 Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Fri, 21 Sep 2018 10:48:17 +0800
+Subject: [PATCH 7/7] Use 4.9 gcc as default cross-compiler compiler
+
+---
+ core/combo/TARGET_linux-arm.mk | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/core/combo/TARGET_linux-arm.mk b/core/combo/TARGET_linux-arm.mk
+index 4d0d936..15738ed 100644
+--- a/core/combo/TARGET_linux-arm.mk
++++ b/core/combo/TARGET_linux-arm.mk
+@@ -35,7 +35,7 @@ TARGET_ARCH_VARIANT := armv5te
+ endif
+ 
+ ifeq ($(strip $(TARGET_GCC_VERSION_EXP)),)
+-TARGET_GCC_VERSION := 4.7
++TARGET_GCC_VERSION := 4.9
+ else
+ TARGET_GCC_VERSION := $(TARGET_GCC_VERSION_EXP)
+ endif
+@@ -113,7 +113,7 @@ TARGET_GLOBAL_CFLAGS += \
+ # We cannot turn it off blindly since the option is not available
+ # in gcc-4.4.x.  We also want to disable sincos optimization globally
+ # by turning off the builtin sin function.
+-ifneq ($(filter 4.6 4.6.% 4.7 4.7.%, $(TARGET_GCC_VERSION)),)
++ifneq ($(filter 4.6 4.6.% 4.7 4.7.% 4.9, $(TARGET_GCC_VERSION)),)
+ TARGET_GLOBAL_CFLAGS += -Wno-unused-but-set-variable -fno-builtin-sin \
+ 			-fno-strict-volatile-bitfields
+ endif
+-- 
+2.7.4
+
