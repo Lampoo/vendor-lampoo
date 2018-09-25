@@ -1,0 +1,27 @@
+From f1ef4e12edf1bbf2da20712c908a9714146f63d3 Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Tue, 25 Sep 2018 09:13:33 +0800
+Subject: [PATCH 5/5] init.rc: disable sh to save memory
+
+---
+ rootdir/init.rc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/rootdir/init.rc b/rootdir/init.rc
+index b7a840f..4db8d46 100644
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -446,8 +446,8 @@ service console /system/bin/sh
+     user shell
+     group log
+ 
+-on property:ro.debuggable=1
+-    start console
++#on property:ro.debuggable=1
++#    start console
+ 
+ # adbd is controlled via property triggers in init.<platform>.usb.rc
+ service adbd /sbin/adbd
+-- 
+2.7.4
+
