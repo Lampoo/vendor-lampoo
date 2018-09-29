@@ -29,8 +29,8 @@ SerialConnection {
 
 		// write files
 		applet.write(0x00000, "at91bootstrap.bin", true)
-		applet.write(0x60000, "at91-sama5d2_bootstrap.dtb")
-		applet.write(0x6c000, "zImage")
+		applet.write(0x60000, "kernel-dtb")
+		applet.write(0x6c000, "kernel")
 		applet.write(0x400000, "system.img")
 		applet.write(0x1000000, "userdata.img")
 

@@ -68,17 +68,17 @@ bootstrap: PRODUCT_IMAGE_OUT := $(PRODUCT_OUT)/image
 bootstrap: $(PHONY)
 	$(hide)mkdir -p $(PRODUCT_IMAGE_OUT)
 ifneq ($(KERNEL_DIR),)
-	$(hide)cp -f $(KERNEL_DIR)arch/arm/boot/zImage $(PRODUCT_IMAGE_OUT)
-	$(hide)cp -f $(KERNEL_DIR)arch/arm/boot/dts/at91-sama5d2_$(TARGET_PRODUCT).dtb $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(KERNEL_DIR)arch/arm/boot/zImage $(PRODUCT_IMAGE_OUT)/kernel
+	$(hide)cp -f $(KERNEL_DIR)arch/arm/boot/dts/at91-sama5d2_$(TARGET_PRODUCT).dtb $(PRODUCT_IMAGE_OUT)/kernel-dtb
 endif
 ifneq ($(AT91BOOTSTRAP_DIR),)
-	$(hide)cp -f $(AT91BOOTSTRAP_DIR)binaries/at91bootstrap.bin $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(AT91BOOTSTRAP_DIR)binaries/at91bootstrap.bin $(PRODUCT_IMAGE_OUT)/at91bootstrap.bin
 endif
 ifneq ($(SAMBA_DEFSCRIPT),)
-	$(hide)cp -f $(SAMBA_DEFSCRIPT) $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(SAMBA_DEFSCRIPT) $(PRODUCT_IMAGE_OUT)/samba_script.qml
 endif
-	$(hide)cp -f $(INSTALLED_SYSTEMIMAGE) $(PRODUCT_IMAGE_OUT)
-	$(hide)cp -f $(INSTALLED_USERDATAIMAGE_TARGET) $(PRODUCT_IMAGE_OUT)
+	$(hide)cp -f $(INSTALLED_SYSTEMIMAGE) $(PRODUCT_IMAGE_OUT)/system.img
+	$(hide)cp -f $(INSTALLED_USERDATAIMAGE_TARGET) $(PRODUCT_IMAGE_OUT)/userdata.img
 	$(hide)echo Images generated at $(PRODUCT_IMAGE_OUT)
 
 .PHONY: bootstrap_clean
