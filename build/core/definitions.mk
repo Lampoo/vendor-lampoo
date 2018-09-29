@@ -1,4 +1,4 @@
-ifeq ($(JAVA_NOT_REQUIRED),true)
+ifeq ($(TARGET_PRODUCT),bootstrap)
 # MAKEFILE_LIST variable includes a list of makefile files appended
 # from `include` directive, use it here to find out the current
 # relative directory
