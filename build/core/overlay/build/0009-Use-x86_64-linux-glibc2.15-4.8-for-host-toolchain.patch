@@ -1,0 +1,61 @@
+From 65dc809b93b41f9b5fbbf87b71dfdbd749a21621 Mon Sep 17 00:00:00 2001
+From: Yonghua Zheng <yh.zheng@yuneec.com>
+Date: Thu, 11 Oct 2018 12:46:24 +0800
+Subject: [PATCH 9/9] Use x86_64-linux-glibc2.15-4.8 for host toolchain
+
+---
+ core/combo/HOST_linux-x86.mk | 19 ++++++++++++-------
+ 1 file changed, 12 insertions(+), 7 deletions(-)
+
+diff --git a/core/combo/HOST_linux-x86.mk b/core/combo/HOST_linux-x86.mk
+index c6a155a..a1d650a 100644
+--- a/core/combo/HOST_linux-x86.mk
++++ b/core/combo/HOST_linux-x86.mk
+@@ -25,13 +25,13 @@ endef
+ # Previously the prebiult host toolchain is used only for the sdk build,
+ # that's why we have "sdk" in the path name.
+ ifeq ($(strip $(HOST_TOOLCHAIN_PREFIX)),)
+-HOST_TOOLCHAIN_PREFIX := prebuilts/tools/gcc-sdk
++HOST_TOOLCHAIN_PREFIX := prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.15-4.8/bin/x86_64-linux-
+ endif
+ # Don't do anything if the toolchain is not there
+-ifneq (,$(strip $(wildcard $(HOST_TOOLCHAIN_PREFIX)/gcc)))
+-HOST_CC  := $(HOST_TOOLCHAIN_PREFIX)/gcc
+-HOST_CXX := $(HOST_TOOLCHAIN_PREFIX)/g++
+-HOST_AR  := $(HOST_TOOLCHAIN_PREFIX)/ar
++ifneq (,$(strip $(wildcard $(HOST_TOOLCHAIN_PREFIX)gcc)))
++HOST_CC  := $(HOST_TOOLCHAIN_PREFIX)gcc
++HOST_CXX := $(HOST_TOOLCHAIN_PREFIX)g++
++HOST_AR  := $(HOST_TOOLCHAIN_PREFIX)ar
+ endif # $(HOST_TOOLCHAIN_PREFIX)/gcc exists
+ 
+ ifneq ($(strip $(BUILD_HOST_64bit)),)
+@@ -43,8 +43,8 @@ HOST_GLOBAL_CFLAGS += -m64
+ HOST_GLOBAL_LDFLAGS += -m64
+ else
+ # We expect SSE3 floating point math.
+-HOST_GLOBAL_CFLAGS += -mstackrealign -msse3 -mfpmath=sse -m32
+-HOST_GLOBAL_LDFLAGS += -m32
++HOST_GLOBAL_CFLAGS += -mstackrealign -msse3 -mfpmath=sse -m32 -Wa,--noexecstack -march=prescott
++HOST_GLOBAL_LDFLAGS += -m32 -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
+ endif # BUILD_HOST_64bit
+ 
+ ifneq ($(strip $(BUILD_HOST_static)),)
+@@ -53,9 +53,14 @@ HOST_GLOBAL_LDFLAGS += -static
+ endif # BUILD_HOST_static
+ 
+ HOST_GLOBAL_CFLAGS += -fPIC \
++	-no-canonical-prefixes \
+     -include $(call select-android-config-h,linux-x86)
+ 
+ # Disable new longjmp in glibc 2.11 and later. See bug 2967937.
+ HOST_GLOBAL_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0
+ 
++# Workaround differences in inttypes.h between host and target.
++# See bug 12708004.
++HOST_GLOBAL_CFLAGS += -D__STDC_FORMAT_MACROS -D__STDC_CONSTANT_MACRO
++
+ HOST_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
+-- 
+2.7.4
+
