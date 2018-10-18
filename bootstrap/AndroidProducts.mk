@@ -19,3 +19,9 @@ PRODUCT_MAKEFILES := $(PRODUCT_DIR)bootstrap.mk
 
 # JAVA is not needed
 JAVA_NOT_REQUIRED := true
+
+# Disable CLANG compilation to speed up build time
+CLANG_NOT_REQUIRED := $(shell [ $(PLATFORM_SDK_VERSION) -le 19 ] && echo true)
+ifeq ($(CLANG_NOT_REQUIRED), true)
+WITHOUT_CLANG := true
+endif
