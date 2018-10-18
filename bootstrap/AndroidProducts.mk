@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+ifeq ($(TARGET_PRODUCT),bootstrap)
+
 PRODUCT_DIR := $(LOCAL_DIR)/
 
 PRODUCT_MAKEFILES := $(PRODUCT_DIR)bootstrap.mk
@@ -24,4 +26,6 @@ JAVA_NOT_REQUIRED := true
 CLANG_NOT_REQUIRED := $(shell [ $(PLATFORM_SDK_VERSION) -le 19 ] && echo true)
 ifeq ($(CLANG_NOT_REQUIRED), true)
 WITHOUT_CLANG := true
+endif
+
 endif
