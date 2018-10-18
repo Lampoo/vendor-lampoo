@@ -62,9 +62,12 @@ endif
 PHONY += droid
 CLEAN_RULE += clean
 
+PRODUCT_IMAGE_OUT := $(PRODUCT_OUT)/image
+
 SAMBA_DEFSCRIPT ?= $(abspath $(wildcard $(PRODUCT_DIR)$(TARGET_DEVICE)/samba_script.qml))
+SAMBA_BOOTSCRIPT ?= $(abspath $(wildcard $(PRODUCT_DIR)$(TARGET_DEVICE)/samba_bootscript.qml))
+
 .PHONY: bootstrap
-bootstrap: PRODUCT_IMAGE_OUT := $(PRODUCT_OUT)/image
 bootstrap: $(PHONY)
 	$(hide)mkdir -p $(PRODUCT_IMAGE_OUT)
 ifneq ($(KERNEL_DIR),)
@@ -77,6 +80,9 @@ endif
 ifneq ($(SAMBA_DEFSCRIPT),)
 	$(hide)cp -f $(SAMBA_DEFSCRIPT) $(PRODUCT_IMAGE_OUT)/samba_script.qml
 endif
+ifneq ($(SAMBA_BOOTSCRIPT),)
+	$(hide)cp -f $(SAMBA_BOOTSCRIPT) $(PRODUCT_IMAGE_OUT)/samba_bootscript.qml
+endif
 	$(hide)cp -f $(INSTALLED_SYSTEMIMAGE) $(PRODUCT_IMAGE_OUT)/system.img
 	$(hide)cp -f $(INSTALLED_USERDATAIMAGE_TARGET) $(PRODUCT_IMAGE_OUT)/userdata.img
 	$(hide)echo Images generated at $(PRODUCT_IMAGE_OUT)
@@ -84,10 +90,16 @@ endif
 .PHONY: bootstrap_clean
 bootstrap_clean: $(CLEAN_RULE)
 
-ifneq ($(SAMBA_DEFSCRIPT),)
+ifneq ($(wildcard $(PRODUCT_IMAGE_OUT)/samba_script.qml),)
 .PHONY: upload
-upload: PRODUCT_IMAGE_OUT := $(PRODUCT_OUT)/image
 upload: SAMBA := $(abspath $(TOPDIR)external/sam-ba-3.2.2/sam-ba)
 upload: $(SAMBA)
-	$(hide)cd $(PRODUCT_IMAGE_OUT) && $(SAMBA) -x $(SAMBA_DEFSCRIPT)
+	$(hide)cd $(PRODUCT_IMAGE_OUT) && $(SAMBA) -x samba_script.qml
+endif
+
+ifneq ($(wildcard $(PRODUCT_IMAGE_OUT)/samba_bootscript.qml),)
+.PHONY: bootconfig
+bootconfig: SAMBA := $(abspath $(TOPDIR)external/sam-ba-3.2.2/sam-ba)
+bootconfig: $(SAMBA)
+	$(hide)cd $(PRODUCT_IMAGE_OUT) && $(SAMBA) -x samba_bootscript.qml
 endif
