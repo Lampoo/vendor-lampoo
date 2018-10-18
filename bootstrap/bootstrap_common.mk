@@ -36,6 +36,7 @@ PRODUCT_PACKAGES += \
 	libstdc++ \
 	libsysutils \
 	libutils \
+	libz \
 	linker \
 	mkshrc \
 	property_contexts \
