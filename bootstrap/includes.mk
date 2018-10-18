@@ -14,4 +14,4 @@
 -include hardware/libhardware/Android.mk
 -include system/core/Android.mk
 -include system/extras/Android.mk
--include vendor/yuneec/jacobian/Android.mk
+-include vendor/lampoo/bootstrap/Android.mk
