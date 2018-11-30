@@ -20,8 +20,94 @@ on init
     mkdir /dev/usb-ffs/adb 0770 shell shell
     mount functionfs adb /dev/usb-ffs/adb uid=2000,gid=2000
 
-    # bind the adb function to USB configuration
+    # bind adb function to USB configuration
     symlink /config/usb_gadget/g1/functions/ffs.adb /config/usb_gadget/g1/configs/b.1/f1
+
+    # Create uvc gadget function
+    #
+    # The function name to use when creating function directory is "uvc".
+    # The uvc function provides these attributes in its function directory:
+    #     streaming_interval  - interval for polling endpoint for data transfers
+    #     streaming_maxburst  - bMaxBurst for super speed companion descriptor
+    #     streaming_maxpacket - maximum packet size this endpoint is capable of
+    #                           sending or receiving when this configuration is
+    #                           selected
+    # There are also "contro" and "streaming" subdirectores, each of which contain
+    # a number of their subdirectores. There are some sane defaults provided, but
+    # the user must provide the following:
+    # control header - create in control/header, link from control/class/fs and/or
+    #                  control/class/ss
+    # streaming header - create in streaming/header, link from streaming/class/fs
+    #                    and/or streaming/class/hs and/or streaming/class/ss
+    # format description - create in streaming/header and/or streaming/uncompressed
+    # frame description - create in streaming/mjpeg/m and/or in streaming/uncompressed/u
+    # Each frame descriptor contains frame interval specification, and each such
+    # specification consists of a number of linkes with an interval value in each
+    # line. The rules stated above are best illustrated with an example:
+    # $ mkdir functions/uvc.usb0/control/header/h
+    # $ cd functions/uvc.usb0/control
+    # $ ln -s header/h class/fs
+    # $ ln -s header/h class/ss
+    # $ mkdir -p functions/uvc.usb0/streaming/uncompressed/u/360p
+    # $ cat <<EOF > functions/uvc.usb0/streaming/uncompressed/u/360p/dwFrameInterval
+    # 666666  // 15fps
+    # 1000000 //
+    # 5000000 //
+    # $ mkdir -p functions/uvc.usb0/streaming/header/h
+    # $ cd functions/uvc.usb0/streaming/header/h
+    # $ ln -s ../../uncompressed/u
+    # $ cd ../../class/fs
+    # $ ln -s ../../header/h
+    # $ cd ../../class/hs
+    # $ ln -s ../../header/h
+    # $ cd ../../class/ss
+    # $ ln -s ../../header/h
+
+    # usb_device_descriptor
+    mkdir /config/usb_gadget/g2 0770 shell shell
+    write /config/usb_gadget/g2/idVendor 0x1D6B
+    write /config/usb_gadget/g2/idProduct 0x0102
+    write /config/usb_gadget/g2/bDeviceClass 239
+    write /config/usb_gadget/g2/bDeviceSubClass 2
+    write /config/usb_gadget/g2/bDeviceProtocol 1
+    #write /config/usb_gadget/g2/bMaxPacketSize0 64
+    mkdir /config/usb_gadget/g2/strings/0x409 0770 shell shell
+    write /config/usb_gadget/g2/strings/0x409/serialnumber 0123459876
+    write /config/usb_gadget/g2/strings/0x409/manufacturer LAMPOO
+    write /config/usb_gadget/g2/strings/0x409/product LAMPOO_uvc
+
+    # usb_configuration
+    mkdir /config/usb_gadget/g2/configs/c.1 0770 shell shell
+    mkdir /config/usb_gadget/g2/configs/c.1/strings/0x409 0770 shell shell
+    write /config/usb_gadget/g2/configs/c.1/strings/0x409/configuration "uvc"
+    write /config/usb_gadget/g2/configs/c.1/MaxPower 120
+    write /config/usb_gadget/g2/configs/c.1/bmAttributes 0xC0
+
+    # IAD (interface association descriptor)
+    mkdir /config/usb_gadget/g2/functions/uvc.usb0 0770 shell shell
+
+    # video control interface
+    mkdir /config/usb_gadget/g2/functions/uvc.usb0/control/header/h 0770 shell shell
+    symlink /config/usb_gadget/g2/functions/uvc.usb0/control/header/h /config/usb_gadget/g2/functions/uvc.usb0/control/class/fs/h
+    symlink /config/usb_gadget/g2/functions/uvc.usb0/control/header/h /config/usb_gadget/g2/functions/uvc.usb0/control/class/ss/h
+
+    # frame descriptor (YUYV/240p/30fps)
+    mkdir /config/usb_gadget/g2/functions/uvc.usb0/streaming/uncompressed/u 0770 shell shell
+    mkdir /config/usb_gadget/g2/functions/uvc.usb0/streaming/uncompressed/u/240p 0770 shell shell
+    write /config/usb_gadget/g2/functions/uvc.usb0/streaming/uncompressed/u/240p/wWidth 320
+    write /config/usb_gadget/g2/functions/uvc.usb0/streaming/uncompressed/u/240p/wHeight 240
+    write /config/usb_gadget/g2/functions/uvc.usb0/streaming/uncompressed/u/240p/dwFrameInterval "333333"
+    write /config/usb_gadget/g2/functions/uvc.usb0/streaming/uncompressed/u/240p/dwDefaultFrameInterval "333333"
+
+    # header descriptor
+    mkdir /config/usb_gadget/g2/functions/uvc.usb0/streaming/header/h 0770 shell shell
+    symlink /config/usb_gadget/g2/functions/uvc.usb0/streaming/uncompressed/u /config/usb_gadget/g2/functions/uvc.usb0/streaming/header/h/u
+    symlink /config/usb_gadget/g2/functions/uvc.usb0/streaming/header/h /config/usb_gadget/g2/functions/uvc.usb0/streaming/class/fs/h
+    symlink /config/usb_gadget/g2/functions/uvc.usb0/streaming/header/h /config/usb_gadget/g2/functions/uvc.usb0/streaming/class/hs/h
+    symlink /config/usb_gadget/g2/functions/uvc.usb0/streaming/header/h /config/usb_gadget/g2/functions/uvc.usb0/streaming/class/ss/h
+
+    # bind UVC function to USB configuration
+    symlink /config/usb_gadget/g2/functions/uvc.usb0 /config/usb_gadget/g2/configs/c.1/f1
 
     # Set UDC controller driver, obtained by `ls /sys/class/udc/`
     setprop sys.usb.controller 300000.gadget
@@ -34,16 +120,29 @@ on fs
 
 on property:sys.usb.config=none
     write /config/usb_gadget/g1/UDC ""
+    write /config/usb_gadget/g2/UDC ""
     stop adbd
     setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=adb
+    write /config/usb_gadget/g1/UDC ""
+    write /config/usb_gadget/g2/UDC ""
     start adbd
     setprop sys.usb.state ${sys.usb.config}
     # Need this 2 seconds delay before to enable UDC
     wait /dev/socket/waiting 2
     # Set UDC driver to enable it
     write /config/usb_gadget/g1/UDC ${sys.usb.controller}
+
+on property:sys.usb.config=uvc
+    write /config/usb_gadget/g1/UDC ""
+    write /config/usb_gadget/g2/UDC ""
+    #start uvcd
+    setprop sys.usb.state ${sys.usb.config}
+    # Need this 2 seconds delay before to enable UDC
+    wait /dev/socket/waiting 2
+    # Set UDC driver to enable it
+    write /config/usb_gadget/g2/UDC ${sys.usb.controller}
 
 # Used to set USB configuration at boot and to switch the configuration
 # when changing the default configuration
