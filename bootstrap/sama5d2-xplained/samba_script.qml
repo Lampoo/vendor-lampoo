@@ -28,10 +28,15 @@ SerialConnection {
 		applet.erase(0, applet.memorySize)
 
 		// write files
+		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0:0x4000 -c writeboot:at91bootstrap.bin
 		applet.write(0x00000, "at91bootstrap.bin", true)
+		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0x60000:0xc000 -c write:kernel-dtb:0x60000
 		applet.write(0x60000, "kernel-dtb")
+		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0x6c000:0x394000 -c write:kernel:0x6c000
 		applet.write(0x6c000, "kernel")
+		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0x400000:0xc00000 -c write:system.img:0x400000
 		applet.write(0x400000, "system.img")
+		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0x1000000:0x1000000 -c write:userdata.img:0x1000000
 		applet.write(0x1000000, "userdata.img")
 
 		// initialize boot config applet
