@@ -251,7 +251,15 @@ struct v4l2_device *v4l2_open(const char *devname)
 	struct v4l2_device *dev;
 	struct v4l2_capability cap;
 	__u32 capabilities;
+	char path[64];
+	const char *p;
+
 	int ret;
+
+	if (devname[0] == '/')
+		strncpy(path, devname, sizeof(path));
+	else
+		snprintf(path, sizeof(path), "/dev/%s", devname);
 
 	dev = malloc(sizeof *dev);
 	if (dev == NULL)
@@ -259,12 +267,17 @@ struct v4l2_device *v4l2_open(const char *devname)
 
 	memset(dev, 0, sizeof *dev);
 	dev->fd = -1;
-	dev->name = strdup(devname);
+
+	p = strrchr(path, '/');
+	if (p != NULL)	p++;
+	else		p = path;
+
+	dev->name = strdup(p);
 	list_init(&dev->formats);
 
-	dev->fd = open(devname, O_RDWR | O_NONBLOCK);
+	dev->fd = open(path, O_RDWR | O_NONBLOCK);
 	if (dev->fd < 0) {
-		printf("Error opening device %s: %d.\n", devname, errno);
+		printf("Error opening device %s: %d.\n", path, errno);
 		v4l2_close(dev);
 		return NULL;
 	}
@@ -291,6 +304,12 @@ struct v4l2_device *v4l2_open(const char *devname)
 	else {
 		printf("Error opening device %s: neither video capture "
 			"nor video output supported.\n", devname);
+		v4l2_close(dev);
+		return NULL;
+	}
+
+	if (!(capabilities & V4L2_CAP_STREAMING)) {
+		printf("Error opening device %s: streaming not supported.\n", devname);
 		v4l2_close(dev);
 		return NULL;
 	}
