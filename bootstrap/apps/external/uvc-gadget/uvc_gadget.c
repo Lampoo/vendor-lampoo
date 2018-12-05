@@ -617,7 +617,7 @@ static int uvc_gadget_fill_buffer(struct looper *looper, unsigned int id, void *
 		if (gadget->id == id) break;
 	}
 
-	if (gadget != NULL && gadget->streaming) {
+	if (gadget != NULL && gadget->is_streaming) {
 		struct v4l2_video_buffer *buf = capture_obtain_buffer(obj);
 		memcpy(gadget->imgdata, buf->mem, buf->bytesused);
 		return 0;
