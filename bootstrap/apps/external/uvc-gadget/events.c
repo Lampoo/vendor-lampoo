@@ -35,6 +35,12 @@ struct event_fd {
 	void *priv;
 };
 
+struct event_iter {
+	int fd;
+	void (*callback)(int fd, void *priv);
+	void *priv;
+};
+
 void events_watch_fd(struct events *events, int fd, enum event_type type,
 		     void(*callback)(int, void *), void *priv)
 {
@@ -106,6 +112,7 @@ static void events_dispatch(struct events *events, const fd_set *rfds,
 	struct event_fd *event;
 	struct event_fd *next;
 
+#if 0
 	list_for_each_entry_safe(event, next, &events->events, list) {
 		if (event->type == EVENT_READ &&
 		    FD_ISSET(event->fd, rfds))
@@ -121,6 +128,31 @@ static void events_dispatch(struct events *events, const fd_set *rfds,
 		if (events->done)
 			break;
 	}
+#else
+	struct event_iter iter[10];
+
+	int i, n = 0;
+
+	list_for_each_entry_safe(event, next, &events->events, list) {
+		if ((event->type == EVENT_READ && FD_ISSET(event->fd, rfds)) ||
+		    (event->type == EVENT_WRITE && FD_ISSET(event->fd, wfds)) ||
+		    (event->type == EVENT_EXCEPTION && FD_ISSET(event->fd, efds))) {
+			iter[n].fd = event->fd;
+			iter[n].callback = event->callback;
+			iter[n].priv = event->priv;
+			if (++n >= (int)ARRAY_SIZE(iter))
+				break;
+		}
+	}
+
+	for (i = 0; i < n; i++) {
+		iter[i].callback(iter[i].fd, iter[i].priv);
+
+		/* If the callback stopped events processing, we're done. */
+		if (events->done)
+			break;
+	}
+#endif
 }
 
 bool events_loop(struct events *events)
