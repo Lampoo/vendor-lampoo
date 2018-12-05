@@ -53,8 +53,6 @@ static void looper_process(int fd, void *arg)
 		/* default handler */
 		switch (msg->what) {
 		case MSG_SIGNAL:
-			msg->what = MSG_TERMINATE;
-			looper_dispatch(looper, msg, 1);
 			events_stop(&looper->events);
 			break;
 		default:
@@ -117,6 +115,23 @@ int looper_register_handler(struct looper *looper,
 	return 0;
 }
 
+static int looper_cleanup_handlers(struct looper *looper)
+{
+	struct looper_ops *entry, *next;
+	struct message msg;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.what = MSG_TERMINATE;
+
+	list_for_each_entry_safe(entry, next, &looper->handlers, list) {
+		list_remove(&entry->list);
+		entry->handle_message(&msg, entry->priv);
+		free((void *) entry);
+	}
+
+	return 0;
+}
+
 int looper_loop(struct looper *looper)
 {
 	events_loop(&looper->events);
@@ -141,6 +156,7 @@ int looper_send_message(struct looper *looper, int what, int flag, int arg, long
 
 int looper_cleanup(struct looper *looper)
 {
+	looper_cleanup_handlers(looper);
 	events_cleanup(&looper->events);
 	if (looper->allocated) free((void *)looper);
 	return 0;
