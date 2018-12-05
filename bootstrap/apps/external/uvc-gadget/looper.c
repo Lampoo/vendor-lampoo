@@ -18,6 +18,7 @@ struct looper {
 	struct events events;
 	int ctrl_fd;
 	struct list_entry handlers;
+	int allocated;
 };
 
 static void looper_dispatch(struct looper* looper, struct message *msg, int broadcast)
@@ -72,13 +73,18 @@ static void looper_process(int fd, void *arg)
 struct looper *looper_init(struct looper *looper)
 {
 	int fds[2], r;
+	int allocated = 0;
 
-	if (looper == NULL) looper = malloc(sizeof(*looper));
+	if (looper == NULL) {
+		looper = malloc(sizeof(*looper));
+		allocated = 1;
+	}
 
 	assert(looper != NULL);
 
 	memset(looper, 0, sizeof(*looper));
 
+	looper->allocated = allocated;
 	list_init(&looper->handlers);
 	events_init(&looper->events);
 
@@ -131,4 +137,11 @@ int looper_send_message(struct looper *looper, int what, int flag, int arg, long
 	msg.lParam = larg;
 	int r = write(looper->ctrl_fd, &msg, sizeof(msg));
 	return (r == sizeof(msg)) ? 0 : -1;
+}
+
+int looper_cleanup(struct looper *looper)
+{
+	events_cleanup(&looper->events);
+	if (looper->allocated) free((void *)looper);
+	return 0;
 }

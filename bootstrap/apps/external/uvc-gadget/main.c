@@ -45,5 +45,7 @@ int main()
 
 	looper_loop(g_looper);
 
+	looper_cleanup(g_looper);
+
 	return 0;
 }

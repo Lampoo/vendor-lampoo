@@ -31,6 +31,8 @@ int looper_register_handler(struct looper *looper,
 
 int looper_loop(struct looper *looper);
 
+int looper_cleanup(struct looper *looper);
+
 int looper_send_message(struct looper *looper, int what, int flag, int arg, long larg);
 
 #define looper_send_empty_message(looper, what) \
