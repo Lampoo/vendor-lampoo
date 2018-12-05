@@ -626,6 +626,23 @@ static int uvc_gadget_fill_buffer(struct looper *looper, unsigned int id, void *
 	return -1;
 }
 
+static int uvc_gadget_terminate()
+{
+	struct uvc_gadget *gadget, *next;
+	struct events *events;
+
+	list_for_each_entry_safe(gadget, next, &g_gadgets, list) {
+		list_remove(&gadget->list);
+		uvc_video_stream(gadget, 0);
+		events = looper_getevents(gadget->looper);
+		events_unwatch_fd(events, gadget->vdev->fd, EVENT_EXCEPTION);
+		v4l2_close(gadget->vdev);
+		free(gadget);
+	}
+
+	return 0;
+}
+
 static int handle_message(struct message *msg, void *priv)
 {
 	struct looper *looper = (struct looper *) priv;
@@ -644,7 +661,10 @@ static int handle_message(struct message *msg, void *priv)
 		break;
 	case MSG_VIDEO_FRAME_AVAILABLE:
 		if (uvc_gadget_fill_buffer(looper, (unsigned int) msg->wParam, (void *) msg->lParam) == 0)
-            return 1;
+			return 1;
+		break;
+	case MSG_TERMINATE:
+		uvc_gadget_terminate();
 		break;
 	}
 
