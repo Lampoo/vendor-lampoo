@@ -13,6 +13,8 @@ struct v4l_capture {
 
 	struct v4l2_device *vdev;
 
+	int is_streaming;
+
 	unsigned long gadget_id;
 
 	struct list_entry list;
@@ -102,11 +104,15 @@ static int v4l_video_stream(struct v4l_capture *capture, int on)
 	unsigned i;
 
 	if (!on) {
+		if (!capture->is_streaming) return 0;
 		printf("V4L: Stop streaming.\n");
 		events_unwatch_fd(events, capture->vdev->fd, EVENT_READ);
 		v4l2_stream_off(capture->vdev);
 		v4l2_free_buffers(capture->vdev);
+		capture->is_streaming = 0;
 	} else {
+		if (capture->is_streaming) return 0;
+
 		printf("V4L: Start streaming.\n");
 
 		ret = v4l2_alloc_buffers(capture->vdev, V4L2_MEMORY_MMAP, 4);
@@ -136,6 +142,8 @@ static int v4l_video_stream(struct v4l_capture *capture, int on)
 		v4l2_stream_on(capture->vdev);
 
 		events_watch_fd(events, capture->vdev->fd, EVENT_READ, capture_process, capture);
+
+		capture->is_streaming = 1;
 	}
 
 	return 0;
@@ -189,6 +197,23 @@ static int v4l_capture_detach(struct looper *looper, const char *devname)
 	}
 
 	return -1;
+}
+
+static int v4l_capture_terminate()
+{
+	struct v4l_capture *capture, *next;
+
+	list_for_each_entry_safe(capture, next, &g_captures, list) {
+		list_remove(&capture->list);
+
+		v4l_video_stream(capture, 0); // stop streaming and free resource
+
+		v4l2_close(capture->vdev);
+
+		free(capture);
+	}
+
+	return 0;
 }
 
 static int v4l_capture_set_fmt(struct looper *looper, unsigned int id, void *param)
@@ -276,6 +301,9 @@ static int handle_message(struct message *msg, void *priv)
 		break;
 	case MSG_UVC_DETACHED:
 		v4l_capture_detach_gadget(looper, (unsigned int) msg->wParam);
+		break;
+	case MSG_TERMINATE:
+		v4l_capture_terminate();
 		break;
 	}
 
