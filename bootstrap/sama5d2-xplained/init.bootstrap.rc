@@ -119,12 +119,14 @@ on fs
 #    setprop sys.usb.configfs 1
 
 on property:sys.usb.config=none
+    stop adbd
+    stop uvcd
     write /config/usb_gadget/g1/UDC "none"
     write /config/usb_gadget/g2/UDC "none"
-    stop adbd
     setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=adb
+    stop uvcd
     write /config/usb_gadget/g1/UDC "none"
     write /config/usb_gadget/g2/UDC "none"
     start adbd
@@ -135,9 +137,10 @@ on property:sys.usb.config=adb
     write /config/usb_gadget/g1/UDC ${sys.usb.controller}
 
 on property:sys.usb.config=uvc
+    stop adbd
     write /config/usb_gadget/g1/UDC "none"
     write /config/usb_gadget/g2/UDC "none"
-    #start uvcd
+    start uvcd
     setprop sys.usb.state ${sys.usb.config}
     # Need this 2 seconds delay before to enable UDC
     wait /dev/socket/waiting 2
@@ -148,3 +151,10 @@ on property:sys.usb.config=uvc
 # when changing the default configuration
 on property:persist.sys.usb.config=*
     setprop sys.usb.config ${persist.sys.usb.config}
+
+# UVCD daemon
+service uvcd /system/bin/uvcd
+    class core
+    user system
+    group system
+    disabled
