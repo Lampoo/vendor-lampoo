@@ -22,6 +22,7 @@ PRODUCT_LOCALES := en_US
 # A minimum runtime with shell only
 PRODUCT_PACKAGES += \
 	adbd \
+	debuggerd \
 	init \
 	init.environ.rc \
 	init.rc \
