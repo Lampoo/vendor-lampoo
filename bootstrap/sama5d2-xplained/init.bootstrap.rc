@@ -119,14 +119,14 @@ on fs
 #    setprop sys.usb.configfs 1
 
 on property:sys.usb.config=none
-    write /config/usb_gadget/g1/UDC ""
-    write /config/usb_gadget/g2/UDC ""
+    write /config/usb_gadget/g1/UDC "none"
+    write /config/usb_gadget/g2/UDC "none"
     stop adbd
     setprop sys.usb.state ${sys.usb.config}
 
 on property:sys.usb.config=adb
-    write /config/usb_gadget/g1/UDC ""
-    write /config/usb_gadget/g2/UDC ""
+    write /config/usb_gadget/g1/UDC "none"
+    write /config/usb_gadget/g2/UDC "none"
     start adbd
     setprop sys.usb.state ${sys.usb.config}
     # Need this 2 seconds delay before to enable UDC
@@ -135,8 +135,8 @@ on property:sys.usb.config=adb
     write /config/usb_gadget/g1/UDC ${sys.usb.controller}
 
 on property:sys.usb.config=uvc
-    write /config/usb_gadget/g1/UDC ""
-    write /config/usb_gadget/g2/UDC ""
+    write /config/usb_gadget/g1/UDC "none"
+    write /config/usb_gadget/g2/UDC "none"
     #start uvcd
     setprop sys.usb.state ${sys.usb.config}
     # Need this 2 seconds delay before to enable UDC
