@@ -126,7 +126,7 @@ uvc_video_fill_buffer(struct uvc_device *dev, struct v4l2_video_buffer *buf)
 }
 
 static void
-uvc_video_process(void *d)
+uvc_video_process(int fd, void *d)
 {
 	struct uvc_device *dev = d;
 	struct v4l2_video_buffer buf;
@@ -478,7 +478,7 @@ uvc_events_process_data(struct uvc_device *dev, struct uvc_request_data *data)
 }
 
 static void
-uvc_events_process(void *d)
+uvc_events_process(int fd, void *d)
 {
 	struct uvc_device *dev = d;
 	struct v4l2_event v4l2_event;

@@ -31,12 +31,12 @@ struct event_fd {
 
 	int fd;
 	enum event_type type;
-	void (*callback)(void *priv);
+	void (*callback)(int fd, void *priv);
 	void *priv;
 };
 
 void events_watch_fd(struct events *events, int fd, enum event_type type,
-		     void(*callback)(void *), void *priv)
+		     void(*callback)(int, void *), void *priv)
 {
 	struct event_fd *event;
 
@@ -109,13 +109,13 @@ static void events_dispatch(struct events *events, const fd_set *rfds,
 	list_for_each_entry_safe(event, next, &events->events, list) {
 		if (event->type == EVENT_READ &&
 		    FD_ISSET(event->fd, rfds))
-			event->callback(event->priv);
+			event->callback(event->fd, event->priv);
 		else if (event->type == EVENT_WRITE &&
 			 FD_ISSET(event->fd, wfds))
-			event->callback(event->priv);
+			event->callback(event->fd, event->priv);
 		else if (event->type == EVENT_EXCEPTION &&
 			 FD_ISSET(event->fd, efds))
-			event->callback(event->priv);
+			event->callback(event->fd, event->priv);
 
 		/* If the callback stopped events processing, we're done. */
 		if (events->done)
