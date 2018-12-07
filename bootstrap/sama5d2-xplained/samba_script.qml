@@ -28,7 +28,7 @@ SerialConnection {
 		applet.erase(0, applet.memorySize)
 
 		// write files
-		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0:0x4000 -c writeboot:at91bootstrap.bin
+		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0:0x60000 -c writeboot:at91bootstrap.bin
 		applet.write(0x00000, "at91bootstrap.bin", true)
 		// sam-ba -p serial -d sama5d2 -a qspiflash:0:3:66 -c erase:0x60000:0xc000 -c write:kernel-dtb:0x60000
 		applet.write(0x60000, "kernel-dtb")
