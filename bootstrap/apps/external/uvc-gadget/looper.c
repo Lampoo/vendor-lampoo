@@ -158,6 +158,7 @@ int looper_cleanup(struct looper *looper)
 {
 	looper_cleanup_handlers(looper);
 	events_cleanup(&looper->events);
+	close(looper->ctrl_fd);
 	if (looper->allocated) free((void *)looper);
 	return 0;
 }
