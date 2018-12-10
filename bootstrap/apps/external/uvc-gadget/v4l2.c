@@ -199,6 +199,7 @@ v4l2_enum_frame_sizes(struct v4l2_device *dev, struct v4l2_format_desc *format)
 
 	return 0;
 }
+
 static int v4l2_enum_formats(struct v4l2_device *dev)
 {
 	struct v4l2_format_desc *format;
@@ -510,6 +511,25 @@ int v4l2_set_format(struct v4l2_device *dev, struct v4l2_pix_format *format)
 		printf("%s: unable to set format (%d).\n", dev->name, errno);
 		return -errno;
 	}
+
+	memset(&fmt, 0, sizeof fmt);
+	fmt.type = dev->type;
+	ret = ioctl(dev->fd, VIDIOC_G_FMT, &fmt);
+	if (ret < 0) {
+		printf("%s: unable to get format (%d).\n", dev->name, errno);
+		return -errno;
+	}
+
+	/* some drivers don't report error even format not supported, so
+	 * double check below to make sure the format is *REALLY* accepted
+	 * and return error if not.
+	 */
+	if (fmt.fmt.pix.width != format->width)
+		return -EINVAL;
+	if (fmt.fmt.pix.height != format->height)
+		return -EINVAL;
+	if (fmt.fmt.pix.pixelformat != format->pixelformat)
+		return -EINVAL;
 
 	dev->format = fmt.fmt.pix;
 	*format = fmt.fmt.pix;
