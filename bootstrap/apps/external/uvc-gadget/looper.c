@@ -1,3 +1,4 @@
+#define _GNU_SOURCE // for pipe2
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -86,11 +87,8 @@ struct looper *looper_init(struct looper *looper)
 	list_init(&looper->handlers);
 	events_init(&looper->events);
 
-	r = pipe(fds);
+	r = pipe2(fds, O_CLOEXEC | O_NONBLOCK);
 	assert(r == 0);
-
-	fcntl(fds[0], F_SETFD, O_CLOEXEC);
-	fcntl(fds[1], F_SETFD, O_CLOEXEC);
 
 	looper->ctrl_fd = fds[1];
 
