@@ -60,6 +60,7 @@ int hotplug_init(struct looper *looper)
 	if (fd < 0) return fd;
 
 	fcntl(fd, F_SETFD, O_CLOEXEC);
+	fcntl(fd, F_SETFL, O_NONBLOCK);
 
 	inotify_add_watch(fd, "/dev", IN_CREATE | IN_DELETE);
 
