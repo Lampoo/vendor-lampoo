@@ -8,6 +8,12 @@
 #include "list.h"
 #include "message.h"
 
+#ifndef ARRAY_SIZE
+# define ARRAY_SIZE(x)	((sizeof(x)) / (sizeof(x[0])))
+#endif
+
+#define INTERNAL_BUFFER_NUMBER	2
+
 struct v4l_capture {
 	struct looper *looper;
 
@@ -18,69 +24,54 @@ struct v4l_capture {
 	unsigned long gadget_id;
 
 	struct list_entry list;
-};
 
-struct v4l_buffer {
-	struct ref ref;
+	unsigned int fcc;
+	unsigned int width;
+	unsigned int height;
 
-	struct v4l_capture *capture;
-
-	struct v4l2_video_buffer buf;
+	unsigned index;
+	unsigned char *buffers[INTERNAL_BUFFER_NUMBER];
 };
 
 static struct list_entry g_captures;
 
-static void v4l_buffer_deference(void *obj)
+static int v4l_process_buffer(struct v4l_capture *capture, struct v4l2_video_buffer *buf)
 {
-	struct v4l_buffer *buffer = (struct v4l_buffer *) obj;
-	int ret;
+	unsigned char *y = (unsigned char *) buf->mem;
+	int index = (capture->index % INTERNAL_BUFFER_NUMBER);
+	unsigned char *yuyv = capture->buffers[index];
+	int i;
+	int size = capture->height * capture->width * 2;
 
-	ret = v4l2_queue_buffer(buffer->capture->vdev, &buffer->buf);
-	if (ret < 0) {
-		printf("Failed to queue buffer.\n");
+	capture->index++;
+
+	// Convert GreyScale to YUYV (YUV422)
+	switch (capture->vdev->format.pixelformat) {
+	case V4L2_PIX_FMT_GREY:
+		for (i = 0; i < size; i += 2) {
+			yuyv[i] = *y++;
+		}
+		break;
+	case V4L2_PIX_FMT_YUYV:
+		memcpy(yuyv, y, size);
+		break;
+	default:
+		return -ENOSYS;
 	}
 
-	free(obj);
-}
+	looper_send_message(capture->looper, MSG_VIDEO_FRAME_AVAILABLE,
+				0, capture->gadget_id, (long) capture->buffers[index]);
 
-struct v4l2_video_buffer *capture_obtain_buffer(void *obj)
-{
-	struct v4l_buffer *buffer = (struct v4l_buffer *) obj;
-	return &buffer->buf;
+	return 0;
 }
 
 static void capture_process(int fd, void *arg)
 {
 	struct v4l_capture *capture = (struct v4l_capture *) arg;
-#if 1
-	struct v4l_buffer *buffer = malloc(sizeof(*buffer));
-	int ret;
-
-	(void)fd;
-
-	if (!buffer) {
-		printf("Out of memory.\n");
-		return;
-	}
-
-	memset(buffer, 0, sizeof(*buffer));
-	buffer->ref.deference = v4l_buffer_deference;
-	buffer->capture = capture;
-
-	ret = v4l2_dequeue_buffer(capture->vdev, &buffer->buf);
-	if (ret < 0) {
-		printf("Failed to dequeue buffer.\n");
-		free(buffer);
-		return;
-	}
-
-	looper_send_message(capture->looper, MSG_VIDEO_FRAME_AVAILABLE,
-				MSG_FLAG_LPARAM_REFERENCE, capture->gadget_id, (long) buffer);
-#else
 	struct v4l2_video_buffer buf;
 	int ret;
 
-	(void) fd;
+	(void)fd;
 
 	ret = v4l2_dequeue_buffer(capture->vdev, &buf);
 	if (ret < 0) {
@@ -88,20 +79,49 @@ static void capture_process(int fd, void *arg)
 		return;
 	}
 
+	v4l_process_buffer(capture, &buf);
+
 	v4l2_queue_buffer(capture->vdev, &buf);
-#endif
 }
 
-static int v4l_video_set_fmt(struct v4l_capture *capture, struct v4l2_pix_format *fmt)
+static unsigned v4l_video_supported_format[] = {
+	V4L2_PIX_FMT_YUYV,
+	V4L2_PIX_FMT_GREY,
+};
+
+static int v4l_video_try_set_format(struct v4l_capture *capture, struct v4l2_pix_format *fmt)
 {
-	return v4l2_set_format(capture->vdev, fmt);
+	struct v4l2_pix_format format;
+	unsigned i;
+
+	// TODO: add more supported format
+	if (fmt->pixelformat != V4L2_PIX_FMT_YUYV)
+		return -1;
+
+	memset(&format, 0, sizeof(format));
+	format.width = fmt->width;
+	format.height = fmt->height;
+	format.field = V4L2_FIELD_ANY;
+
+	for (i = 0; i < ARRAY_SIZE(v4l_video_supported_format); i++) {
+		format.pixelformat = v4l_video_supported_format[i];
+		if (v4l2_set_format(capture->vdev, &format) == 0) {
+			capture->fcc = fmt->pixelformat;
+			capture->width = fmt->width;
+			capture->height = fmt->height;
+			return 0;
+		}
+	}
+
+	return -1;
 }
 
 static int v4l_video_stream(struct v4l_capture *capture, int on)
 {
 	struct events *events = looper_getevents(capture->looper);
-	int ret;
+	int ret, size;
 	unsigned i;
+	unsigned char *buffer;
 
 	if (!on) {
 		if (!capture->is_streaming) return 0;
@@ -109,21 +129,34 @@ static int v4l_video_stream(struct v4l_capture *capture, int on)
 		events_unwatch_fd(events, capture->vdev->fd, EVENT_READ);
 		v4l2_stream_off(capture->vdev);
 		v4l2_free_buffers(capture->vdev);
+		free(capture->buffers[0]);
+		for (i = 0; i < INTERNAL_BUFFER_NUMBER; i++)
+			capture->buffers[i] = NULL;
+		capture->index = 0;
 		capture->is_streaming = 0;
 	} else {
 		if (capture->is_streaming) return 0;
 
 		printf("V4L: Start streaming.\n");
 
+		size = capture->width * capture->height * 2; // YUYV
+		buffer = (unsigned char *) malloc(size * INTERNAL_BUFFER_NUMBER);
+		if (!buffer) {
+			printf("Failed to allocate memory.\n");
+			return -ENOMEM;
+		}
+
 		ret = v4l2_alloc_buffers(capture->vdev, V4L2_MEMORY_MMAP, 4);
 		if (ret < 0) {
 			printf("Failed to allocate buffers.\n");
+			free(buffer);
 			return ret;
 		}
 
 		ret = v4l2_mmap_buffers(capture->vdev);
 		if (ret < 0) {
 			printf("Failed to mmap buffers.\n");
+			free(buffer);
 			v4l2_free_buffers(capture->vdev);
 			return ret;
 		}
@@ -134,10 +167,20 @@ static int v4l_video_stream(struct v4l_capture *capture, int on)
 			ret = v4l2_queue_buffer(capture->vdev, buf);
 			if (ret < 0) {
 				printf("Failed to queue buffer.\n");
+				free(buffer);
 				v4l2_free_buffers(capture->vdev);
 				return ret;
 			}
 		}
+
+		memset(buffer, 128, size * INTERNAL_BUFFER_NUMBER);
+
+		for (i = 0; i < INTERNAL_BUFFER_NUMBER; i++) {
+			capture->buffers[i] = buffer;
+			buffer += size;
+		}
+
+		capture->index = 0;
 
 		v4l2_stream_on(capture->vdev);
 
@@ -224,15 +267,21 @@ static int v4l_capture_set_fmt(struct looper *looper, unsigned int id, void *par
 
 	list_for_each_entry_safe(capture, next, &g_captures, list) {
 		if (capture->gadget_id == id) {
-			v4l_video_set_fmt(capture, (struct v4l2_pix_format *) param);
-			return 0;
+			if (v4l_video_try_set_format(capture, (struct v4l2_pix_format *) param) == 0) {
+				return 0;
+			} else {
+				capture->gadget_id = 0;
+				break;
+			}
 		}
 	}
 
 	list_for_each_entry_safe(capture, next, &g_captures, list) {
 		if (capture->gadget_id == 0) {
+			if (v4l_video_try_set_format(capture, (struct v4l2_pix_format *) param) < 0)
+				continue;
+
 			capture->gadget_id = id;
-			v4l_video_set_fmt(capture, (struct v4l2_pix_format *) param);
 			return 0;
 		}
 	}
